@@ -12,13 +12,11 @@ function [ status, message ] = op_PSLocalisation( data_handle, option, varargin 
 %   baseline_deltaT=scalar(>0); time interval in ms for baseline period
 %   bg_deltaT=scalar or 1xm vector~(>0);   time interval in ms for background pre APs
 %   AP_deltaT=scalar or 1xm vector(>0); time interval in ms for m post APs
+%   bg_offset=; time offset in ms for the pre APs background period
 %   edge_allowance=scalar(>=0); off the edge c(x,y) bounds as multiples of (dx,dy)
 %   display_fitting=1|0;    display figure for fitting
 %--------------------------------------------------------------------------
-%--------------------------------------------------------------------------
 %   HEADER END
-
-%% function complete
 
 %table contents must all have default values
 parameters=struct('note','',...
@@ -29,6 +27,7 @@ parameters=struct('note','',...
     'baseline_deltaT',100,...
     'bg_deltaT',20,...
     'AP_deltaT',20,...
+    'bg_offset',0,...
     'edge_allowance',5,...
     'display_fitting',true);
 
@@ -142,7 +141,7 @@ try
                                         peakdata=squeeze(data_handle.data(peakdataidx).dataval);
                                         Tdata=data_handle.data(peakdataidx).datainfo.T;
                                         minpdist=min(data_handle.data(current_data).datainfo.AP_deltaT);
-                                        [pks,locs,w,p]=findpeaks(peakdata,Tdata,'MinPeakDistance',minpdist,'MinPeakProminence',4);
+                                        [pks,locs,w,p]=findpeaks(peakdata,Tdata,'MinPeakDistance',minpdist,'MinPeakProminence',20,'MinPeakHeight',max(peakdata)/2);
                                         % plot in debug mode
                                         %figure;plot(Tdata,peakdata,'k-',locs,pks,'ro');
                                         if isempty(locs)%no peak found revert to default
@@ -188,6 +187,14 @@ try
                                 data_handle.data(current_data).datainfo.AP_deltaT=max(1,val);
                             else
                                 message=sprintf('%s\n%s size does not match size of intervals.',message,parameters);
+                                status=false;
+                            end
+                            
+                        case 'bg_offset' %TJ_addition- adds a time offset to the background data period
+                            if str2double(val)<0
+                            data_handle.data(current_data).datainfo.bg_offset=str2double(val)
+                            else
+                                errordlg('Value must be negative')
                                 status=false;
                             end
                         case 'edge_allowance'
@@ -307,12 +314,16 @@ try
                             timeidx=(Tdata>=signalinterval(partidx,1)&Tdata<=signalinterval(partidx,2));
                             % find corresponding images
                             tempimg=squeeze(mean(signaldata(:,:,timeidx),3));
+                                                    
+ 
                             if partidx==1
                                 % background image
                                 bgimg=tempimg;
                                 titletext='background';
                             else
+                                bg_offset=round(data_handle.data(current_data).datainfo.bg_offset/data_handle.data(current_data).datainfo.dT);    
                                 bgtimeidx=(Tdata>=signalinterval(partidx,1)-bgdt(partidx-1)&Tdata<signalinterval(partidx,1));
+                                bgtimeidx=circshift(bgtimeidx,bg_offset,2);  
                                 titletext=sprintf('int%i|%g',partidx,signalinterval(partidx,1));
                                 if isempty(find(bgtimeidx, 1))
                                     % no background correction just track

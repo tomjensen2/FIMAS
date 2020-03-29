@@ -9,7 +9,7 @@ function display_data_operator( obj, output_handle, index )
 allfile=dir(cat(2,obj.path.userop,filesep,'*.m'));
 [~,allmethods,~]=cellfun(@(x)fileparts(x),{allfile.name},'UniformOutput',false);
 % find methods starts with op_ or data_
-[~,found]=regexp(allmethods,'\<(op|data)_\w*','match');
+[~,found]=regexp(allmethods,'\<(op|data|util)_\w*','match');
 found_idx=find(cellfun(@(x)~isempty(x),found));
 if ~isempty(found_idx)
     if isempty(index)
