@@ -9,15 +9,19 @@ function [ status, message ] = data_batchrename( obj, selected_data, askforparam
 %
 %   4. Indexed part empty for same names
 %
+%   5. If you wish to append Text with a numeric index (i.e. F1,F2,F3) set the Append option to 1
+%   and remove %s from common
+%
 %   5. e.g. common='trial_%s_Ch1', indexed=1:1:10
 %           common='%s',indexd=1:1:10
 %           common='trial',indexed=[]
 %
 %---Batch process----------------------------------------------------------
-%   Parameter=struct('selected_data','1','common','trial_%s_Ch1','indexed','[1:1:10]');
+%   Parameter=struct('selected_data','1','common','trial_%s_Ch1','indexed','[1:1:10]','Append','0');
 %   selected_data=data index, 1 means previous generated data
 %   common=string of common name expressiong
 %   indexed=string of expression used to index or differentiate dataitems
+%   Append Text=logical Append Text with index or not
 %--------------------------------------------------------------------------
 %   HEADER END
 %% function complete
@@ -41,14 +45,16 @@ try
         if askforparam
             % need user input/confirm names
             prompt = {sprintf('Common part naming string\n%%s as placeholder for indexed part\n%%s only to use exiting name'),...
-                'Indexed part naming string'};
+                'Indexed part naming string','Append'};
             dlg_title = cat(2,'Data rename',obj.data(current_data).dataname);
             num_lines = 1;
-            def = {'trial_%s_Ch1','[1:1:10]'};
+            def = {'trial_%s_Ch1','[1:1:10]','0'};
             answer = inputdlg(prompt,dlg_title,num_lines,def);
+            
             if ~isempty(answer)
                 % make out automated naming using common and indexed part
                 common=answer{1};
+                Append=answer{3}
                 if isempty(answer{2})
                     % don't want index?
                     indexed=char(' '*ones(1,numel(selected_data)));
@@ -65,7 +71,7 @@ try
                 end
             else
                 % cancel clicked don't do anything to this data item
-                common=[];indexed=[];
+                common=[];indexed=[];Append=[]
                 message=sprintf('%s\nAction cancelled!',message);
                 return;
             end
@@ -85,6 +91,8 @@ try
                         common=fval{fidx};
                     case 'indexed'
                         indexed=eval(fval{fidx});
+                    case 'Append'
+                        Append=num2str(eval(fval{fidx}))
                 end
             end
             % only use waitbar for user attention if we are in
@@ -115,6 +123,9 @@ try
                 % use exiting name as backbone
                 oldname=obj.data(current_data).dataname;
                 newname=eval(cat(2,'sprintf(''',oldname,'_%s'',num2str(indexed(data_idx)));'));
+            elseif Append=='1'
+                oldname=obj.data(current_data).dataname;
+                newname=cat(2,oldname,common,num2str(indexed(data_idx)));
             else
                 newname=eval(cat(2,'sprintf(''',common,''',num2str(indexed(data_idx)));'));
             end
